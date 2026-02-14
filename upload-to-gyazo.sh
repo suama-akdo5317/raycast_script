@@ -12,14 +12,27 @@
 # @raycast.author suama
 # @raycast.description クリップボードの画像をGyazoにアップロードして、URLをクリップボードにコピーします。
 
-ACCESS_TOKEN=$(op read "op://Personal/GYAZO/Access token")
+# load_env.shを読み込む
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/load_env.sh"
+
+# アクセストークンを取得（1Password or 環境変数）
+if [ -n "$GYAZO_1PASSWORD_PATH" ]; then
+    ACCESS_TOKEN=$(op read "$GYAZO_1PASSWORD_PATH" 2>/dev/null)
+fi
 
 if [ -z "$ACCESS_TOKEN" ]; then
-    echo "❌ 1Passwordからトークンを取得できませんでした"
+    ACCESS_TOKEN="${GYAZO_ACCESS_TOKEN}"
+fi
+
+if [ -z "$ACCESS_TOKEN" ]; then
+    echo "❌ アクセストークンが設定されていません"
+    echo "スクリプトと同じディレクトリに .env ファイルを作成してください："
     exit 1
 fi
 
-TEMP_FILE="/tmp/gyazo_clipboard_$(date +%s).png"
+# 一時ファイルを作成
+TEMP_FILE=$(mktemp /tmp/gyazo_upload_XXXXXX)
 
 # クリップボードから画像を保存
 osascript <<EOF
