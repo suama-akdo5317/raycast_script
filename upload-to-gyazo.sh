@@ -17,8 +17,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/load_env.sh"
 
 # アクセストークンを取得（1Password or 環境変数）
-if [ -n "$GYAZO_1PASSWORD_PATH" ]; then
-    ACCESS_TOKEN=$(op read "$GYAZO_1PASSWORD_PATH" 2>/dev/null)
+if [ -n "$GYAZO_1PASSWORD_COMMAND" ]; then
+    ACCESS_TOKEN=$($GYAZO_1PASSWORD_COMMAND 2>/dev/null)
 fi
 
 if [ -z "$ACCESS_TOKEN" ]; then
