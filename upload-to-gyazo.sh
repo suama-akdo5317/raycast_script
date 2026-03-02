@@ -20,50 +20,45 @@ source "$SCRIPT_DIR/load_env.sh"
 if [ -n "$GYAZO_1PASSWORD_COMMAND" ]; then
     ACCESS_TOKEN=$($GYAZO_1PASSWORD_COMMAND 2>/dev/null)
 fi
-
-if [ -z "$ACCESS_TOKEN" ]; then
-    ACCESS_TOKEN="${GYAZO_ACCESS_TOKEN}"
-fi
+ACCESS_TOKEN="${ACCESS_TOKEN:-$GYAZO_ACCESS_TOKEN}"
 
 if [ -z "$ACCESS_TOKEN" ]; then
     echo "❌ アクセストークンが設定されていません"
-    echo "スクリプトと同じディレクトリに .env ファイルを作成してください："
     exit 1
 fi
 
-# 一時ファイルを作成
-TEMP_FILE=$(mktemp /tmp/gyazo_upload_XXXXXX)
+# 一時ファイル
+TEMP_FILE=$(mktemp /tmp/gyazo_XXXXXX.png)
+trap 'rm -f "$TEMP_FILE"' EXIT
 
-# クリップボードから画像を保存
-osascript <<EOF
+# クリップボードから画像を保存（pngpaste が使えればそちらを優先）
+if command -v pngpaste &>/dev/null; then
+    pngpaste "$TEMP_FILE" 2>/dev/null
+else
+    osascript -e '
 try
-    set png_data to the clipboard as «class PNGf»
-    set the_file to open for access POSIX file "$TEMP_FILE" with write permission
-    write png_data to the_file
-    close access the_file
+    set d to the clipboard as «class PNGf»
+    set f to open for access POSIX file "'"$TEMP_FILE"'" with write permission
+    write d to f
+    close access f
 on error
-    error "クリップボードに画像がありません"
-end try
-EOF
+    error number 1
+end try' 2>/dev/null
+fi
 
-if [ $? -ne 0 ]; then
+if [ $? -ne 0 ] || [ ! -s "$TEMP_FILE" ]; then
     echo "❌ クリップボードに画像がありません"
     exit 1
 fi
 
 # Gyazoにアップロード
-response=$(curl -s -X POST https://upload.gyazo.com/api/upload \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -F imagedata=@"$TEMP_FILE")
-
-# URLを取得
-url=$(echo "$response" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)
-
-# 一時ファイル削除
-rm "$TEMP_FILE"
+url=$(curl -s --compressed -X POST https://upload.gyazo.com/api/upload \
+    -H "Authorization: Bearer $ACCESS_TOKEN" \
+    -F "imagedata=@${TEMP_FILE};type=image/png" \
+    | sed -n 's/.*"url":"\([^"]*\)".*/\1/p')
 
 if [ -n "$url" ]; then
-    echo "$url" | pbcopy
+    printf '%s' "$url" | pbcopy
     echo "✅ $url"
 else
     echo "❌ アップロード失敗"
