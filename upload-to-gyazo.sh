@@ -31,11 +31,8 @@ fi
 TEMP_FILE=$(mktemp /tmp/gyazo_XXXXXX.png)
 trap 'rm -f "$TEMP_FILE"' EXIT
 
-# クリップボードから画像を保存（pngpaste が使えればそちらを優先）
-if command -v pngpaste &>/dev/null; then
-    pngpaste "$TEMP_FILE" 2>/dev/null
-else
-    osascript -e '
+# クリップボードから画像を保存
+osascript -e '
 try
     set d to the clipboard as «class PNGf»
     set f to open for access POSIX file "'"$TEMP_FILE"'" with write permission
@@ -44,7 +41,6 @@ try
 on error
     error number 1
 end try' 2>/dev/null
-fi
 
 if [ $? -ne 0 ] || [ ! -s "$TEMP_FILE" ]; then
     echo "❌ クリップボードに画像がありません"
