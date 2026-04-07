@@ -4,7 +4,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$SCRIPT_DIR/.env"
 
-if [ -f "$ENV_FILE" ]; then
+if cat "$ENV_FILE" > /dev/null 2>&1; then
     # コメント行と空行をスキップして、環境変数をexportする
     while IFS='=' read -r key value || [ -n "$key" ]; do
         # コメント行と空行をスキップ
